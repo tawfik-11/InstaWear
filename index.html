@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>InstaWear — Interactive Virtual Fitting Room</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,700;1,300&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --ink: #05050a;
+    --paper: #f0ede6;
+    --accent: #00e5ff;
+    --accent2: #00ff88;
+    --mid: #0d1117;
+    --muted: #6b6b7a;
+    --border: rgba(0,229,255,0.1);
+    --card-bg: rgba(255,255,255,0.03);
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--ink);
+    color: var(--paper);
+    font-family: 'DM Sans', sans-serif;
+    overflow-x: hidden;
+  }
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+    opacity: 0.03;
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* NAV */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1rem clamp(1.5rem, 6vw, 6rem);
+    background: rgba(5,5,10,0.85);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+  }
+  .nav-logos { display: flex; align-items: center; gap: 1.2rem; }
+  .nav-logos img { height: 40px; object-fit: contain; }
+  .nav-logos .sep { width: 1px; height: 28px; background: rgba(255,255,255,0.15); }
+  .nav-links { display: flex; gap: 2rem; }
+  .nav-links a {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+  .nav-links a:hover { color: var(--accent); }
+
+  /* HERO */
+  .hero {
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: center;
+    padding: 7rem clamp(2rem, 7vw, 7rem) 5rem;
+    gap: 5rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    width: 600px; height: 600px;
+    background: radial-gradient(circle, rgba(0,229,255,0.1) 0%, transparent 70%);
+    left: -200px; top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+  }
+  .hero-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 1.5rem;
+    opacity: 0;
+    animation: fadeUp 0.8s 0.2s forwards;
+  }
+  .hero-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(4.5rem, 9vw, 10rem);
+    line-height: 0.88;
+    letter-spacing: 0.02em;
+    margin-bottom: 2rem;
+    opacity: 0;
+    animation: fadeUp 0.8s 0.4s forwards;
+  }
+  .hero-title .accent { color: var(--accent); }
+  .hero-title .accent2 { color: var(--accent2); }
+  .hero-sub {
+    font-size: clamp(0.95rem, 1.3vw, 1.1rem);
+    font-weight: 300;
+    color: #9a98a8;
+    line-height: 1.75;
+    max-width: 460px;
+    opacity: 0;
+    animation: fadeUp 0.8s 0.6s forwards;
+  }
+  .hero-tags {
+    display: flex; flex-wrap: wrap; gap: 0.5rem;
+    margin-top: 2rem;
+    opacity: 0;
+    animation: fadeUp 0.8s 0.8s forwards;
+  }
+  .tag {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 0.35rem 0.85rem;
+    border: 1px solid rgba(0,229,255,0.3);
+    border-radius: 999px;
+    color: var(--accent);
+  }
+
+  /* HERO RIGHT: stacked QR + project image */
+  .hero-right {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2rem;
+    opacity: 0;
+    animation: fadeUp 0.8s 1s forwards;
+    position: relative; z-index: 2;
+  }
+  .project-preview {
+    width: 100%;
+    max-width: 420px;
+    border-radius: 1.5rem;
+    overflow: hidden;
+    border: 1px solid rgba(0,229,255,0.15);
+    box-shadow: 0 30px 80px rgba(0,0,0,0.6), 0 0 40px rgba(0,229,255,0.08);
+  }
+  .project-preview img {
+    width: 100%;
+    display: block;
+    object-fit: cover;
+  }
+
+  /* SECTION */
+  section {
+    padding: clamp(4rem, 7vw, 6.5rem) clamp(2rem, 7vw, 7rem);
+    position: relative;
+  }
+  .section-tag {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 0.8rem;
+  }
+  .section-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(2.5rem, 4.5vw, 4.5rem);
+    line-height: 1;
+    margin-bottom: 2rem;
+  }
+  .divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(0,229,255,0.25), transparent);
+    margin: 0 clamp(2rem, 7vw, 7rem);
+  }
+
+  /* TEAM */
+  #team { background: var(--mid); }
+  .supervisor-card {
+    background: rgba(0,229,255,0.05);
+    border: 1px solid rgba(0,229,255,0.25);
+    border-radius: 1.5rem;
+    padding: 2rem 2.5rem;
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    margin-bottom: 2rem;
+  }
+  .supervisor-avatar {
+    width: 64px; height: 64px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), #007aff);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.5rem;
+    color: var(--ink);
+    flex-shrink: 0;
+  }
+  .sup-role {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 0.4rem;
+  }
+  .sup-name { font-size: 1.2rem; font-weight: 600; color: var(--paper); }
+  .team-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1.2rem;
+  }
+  .team-card {
+    background: var(--card-bg);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 1.25rem;
+    padding: 1.5rem 1.2rem;
+    display: flex; flex-direction: column; align-items: center;
+    gap: 0.8rem; text-align: center;
+    transition: border-color 0.3s, transform 0.3s;
+  }
+  .team-card:hover { border-color: rgba(0,229,255,0.3); transform: translateY(-4px); }
+  .team-card.leader { background: rgba(0,255,136,0.05); border-color: rgba(0,255,136,0.25); }
+  .avatar {
+    width: 48px; height: 48px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.1rem;
+    color: var(--ink);
+  }
+  .team-role {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .team-card.leader .team-role { color: var(--accent2); }
+  .team-name { font-size: 0.92rem; font-weight: 600; color: var(--paper); }
+
+  /* ABSTRACT */
+  .abstract-body {
+    font-size: clamp(0.95rem, 1.25vw, 1.1rem);
+    line-height: 1.9;
+    color: #b0afbe;
+    max-width: 820px;
+    font-weight: 300;
+  }
+  .abstract-body strong { color: var(--paper); font-weight: 500; }
+
+  /* TWO COL */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3.5rem;
+    align-items: start;
+  }
+  .prose { font-size: 0.97rem; line-height: 1.85; color: #9a98a8; font-weight: 300; }
+  .prose strong { color: var(--paper); font-weight: 500; }
+  .prose ul { padding-left: 1.2rem; margin-top: 0.8rem; display: flex; flex-direction: column; gap: 0.6rem; }
+
+  /* STATS */
+  .stat-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.2rem;
+    margin-top: 2rem;
+  }
+  .stat-box {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+    padding: 1.4rem;
+    text-align: center;
+  }
+  .stat-num { font-family: 'Bebas Neue', sans-serif; font-size: 2.8rem; color: var(--accent); line-height: 1; }
+  .stat-label { font-size: 0.75rem; color: var(--muted); margin-top: 0.4rem; line-height: 1.4; }
+
+  /* INTRO */
+  #intro { background: var(--mid); }
+  .intro-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 4rem; align-items: start; margin-top: 2rem; }
+  .feature-list { display: flex; flex-direction: column; gap: 0.9rem; }
+  .feature-item {
+    display: flex; align-items: flex-start; gap: 1rem;
+    padding: 1.1rem 1.3rem;
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+    background: var(--card-bg);
+    transition: border-color 0.3s;
+  }
+  .feature-item:hover { border-color: rgba(0,229,255,0.3); }
+  .feature-icon { font-size: 1.3rem; flex-shrink: 0; margin-top: 2px; }
+  .feature-text strong { display: block; font-size: 0.9rem; font-weight: 600; margin-bottom: 0.25rem; color: var(--paper); }
+  .feature-text p { font-size: 0.8rem; color: var(--muted); line-height: 1.5; }
+
+  /* FLOW */
+  .flow-container { margin-top: 3rem; display: flex; flex-direction: column; align-items: center; }
+  .flow-row { display: flex; align-items: center; flex-wrap: wrap; justify-content: center; }
+  .flow-node {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 1.25rem;
+    padding: 1.3rem 1.6rem;
+    text-align: center;
+    min-width: 155px; max-width: 185px;
+    transition: border-color 0.3s, transform 0.3s;
+  }
+  .flow-node:hover { border-color: rgba(0,229,255,0.4); transform: scale(1.03); }
+  .flow-node.accent { background: rgba(0,229,255,0.07); border-color: rgba(0,229,255,0.3); }
+  .flow-node.highlight { background: rgba(0,255,136,0.1); border-color: rgba(0,255,136,0.4); }
+  .node-icon { font-size: 1.7rem; margin-bottom: 0.4rem; }
+  .node-title { font-family: 'Space Mono', monospace; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); margin-bottom: 0.25rem; }
+  .flow-node.highlight .node-title { color: var(--accent2); }
+  .node-desc { font-size: 0.75rem; color: var(--muted); line-height: 1.4; }
+  .flow-arrow-h { font-size: 1.4rem; color: var(--accent); padding: 0 0.35rem; opacity: 0.5; flex-shrink: 0; }
+  .flow-arrow-v { font-size: 1.4rem; color: var(--accent); opacity: 0.5; padding: 0.25rem 0; display: flex; justify-content: center; }
+
+  /* FOOTER */
+  footer {
+    background: #020205;
+    padding: 2rem clamp(2rem, 7vw, 7rem);
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;
+    border-top: 1px solid rgba(255,255,255,0.05);
+  }
+  .footer-logos { display: flex; align-items: center; gap: 1.2rem; }
+  .footer-logos img { height: 36px; object-fit: contain; }
+  .footer-sep { width: 1px; height: 24px; background: rgba(255,255,255,0.12); }
+  .footer-note { font-family: 'Space Mono', monospace; font-size: 0.65rem; color: var(--muted); text-align: right; line-height: 1.6; }
+
+  /* ANIM */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .reveal { opacity: 0; transform: translateY(28px); transition: opacity 0.7s ease, transform 0.7s ease; }
+  .reveal.visible { opacity: 1; transform: translateY(0); }
+
+  /* RESPONSIVE */
+  @media (max-width: 900px) {
+    .hero { grid-template-columns: 1fr; text-align: center; }
+    .hero-sub { max-width: 100%; }
+    .hero-tags { justify-content: center; }
+    .hero-right { flex-direction: row; flex-wrap: wrap; justify-content: center; }
+    .project-preview { max-width: 300px; }
+    .two-col, .intro-grid { grid-template-columns: 1fr; gap: 2rem; }
+    .stat-row { grid-template-columns: 1fr 1fr; }
+    nav .nav-links { display: none; }
+  }
+  @media (max-width: 560px) {
+    .stat-row { grid-template-columns: 1fr; }
+    .flow-arrow-h { display: none; }
+    .flow-row { flex-direction: column; align-items: center; }
+    footer { flex-direction: column; text-align: center; }
+    .footer-note { text-align: center; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logos">
+    <img src="assets/Academy logo.png" alt="Academy logo" style="height:60px;" />
+    <div class="sep"></div>
+    <img src="assets/instawear-logo.png" alt="InstaWear" style="height:50px;" />
+    </div>
+  <div class="nav-links">
+    <a href="#team">Team</a>
+    <a href="#abstract">Abstract</a>
+    <a href="#demo">Demo</a><a href="#scope">Scope</a>
+    <a href="#intro">How It Works</a>
+    <a href="#flowchart">Flow</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero" id="home">
+  <div>
+    <p class="hero-label">Graduation Project · EAEAT · 2025/2026</p>
+    <h1 class="hero-title"><span class="accent">Insta</span><span class="accent2">Wear</span></h1>
+    <p class="hero-sub">
+      An AI-powered interactive virtual fitting room that scans your body in real time,
+      builds a hyper-realistic SMPL-X avatar, and lets you try on clothes —
+      with precise fit feedback before you ever touch them.
+    </p>
+    <div class="hero-tags">
+      <span class="tag">Kinect v2</span>
+      <span class="tag">SMPL-X Avatar</span>
+      <span class="tag">Computer Vision</span>
+      <span class="tag">Digital Gauge</span>
+      <span class="tag">Retail Tech</span>
+    </div>
+  </div>
+
+  <div class="hero-right">
+    <div class="project-preview">
+      <img src="assets/project-preview.png" alt="project-preview" style="height: 700Spx;"/>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- TEAM -->
+<section id="team" class="reveal">
+  <p class="section-tag">01 — The Team</p>
+  <h2 class="section-title">Meet the Builders</h2>
+
+  <div class="supervisor-card">
+    <div class="supervisor-avatar">SI</div>
+    <div>
+      <p class="sup-role">Project Supervisor</p>
+      <p class="sup-name">Dr. Sherif Ismail Elsanadily</p>
+      <p style="font-size:0.85rem;color:#777;margin-top:0.3rem;">Faculty Advisor — Egyptian Academy for Engineering &amp; Advanced Technology</p>
+    </div>
+  </div>
+
+  <div class="team-grid">
+    <div class="team-card leader">
+      <div class="avatar" style="background:linear-gradient(135deg,#00ff88,#00c86a)">MS</div>
+      <p class="team-role">Team Leader</p>
+      <p class="team-name">Mustafa Salem</p>
+    </div>
+    <div class="team-card">
+      <div class="avatar" style="background:linear-gradient(135deg,#00e5ff,#0088ff)">TN</div>
+      <p class="team-role">Team Member</p>
+      <p class="team-name">Tawfik Nassar</p>
+    </div>
+    <div class="team-card">
+      <div class="avatar" style="background:linear-gradient(135deg,#a78bfa,#7c3aed)">ME</div>
+      <p class="team-role">Team Member</p>
+      <p class="team-name">Mohamed Emad</p>
+    </div>
+    <div class="team-card">
+      <div class="avatar" style="background:linear-gradient(135deg,#ff6b6b,#ff3366)">KY</div>
+      <p class="team-role">Team Member</p>
+      <p class="team-name">Khalid Yousry</p>
+    </div>
+    <div class="team-card">
+      <div class="avatar" style="background:linear-gradient(135deg,#fbbf24,#f59e0b)">MA</div>
+      <p class="team-role">Team Member</p>
+      <p class="team-name">Mostafa Ahmed</p>
+    </div>
+    <div class="team-card">
+      <div class="avatar" style="background:linear-gradient(135deg,#34d399,#059669)">MA</div>
+      <p class="team-role">Team Member</p>
+      <p class="team-name">Mohamed Ahmed</p>
+    </div>
+    <div class="team-card">
+      <div class="avatar" style="background:linear-gradient(135deg,#f472b6,#db2777)">OM</div>
+      <p class="team-role">Team Member</p>
+      <p class="team-name">Osama Mohamed</p>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ABSTRACT -->
+<section id="abstract" class="reveal">
+  <p class="section-tag">02 — Abstract</p>
+  <h2 class="section-title">In a Nutshell</h2>
+  <p class="abstract-body">
+    <strong>InstaWear</strong> is an interactive virtual fitting room system designed to revolutionize
+    the retail apparel experience. The system integrates a <strong>Microsoft Kinect v2 depth camera</strong>
+    with a custom <strong>digital gauge tool</strong> to capture full-body measurements with exceptional
+    precision — achieving circumferential measurement accuracy up to <strong>99.8%</strong>.
+    <br><br>
+    Using the captured data, the system generates a personalized <strong>SMPL-X parametric avatar</strong>
+    that faithfully mirrors the user's body dimensions. Facial geometry captured from the RGB feed is
+    overlaid onto the avatar, creating a truly immersive, photo-realistic experience. Users can then
+    browse a digital wardrobe, try on garments virtually, and receive instant <strong>fit feedback</strong>
+    — whether a size runs tight, loose, or true-to-fit — along with smart <strong>size recommendations</strong>
+    whenever a better option exists.
+    <br><br>
+    The project directly addresses a critical gap in modern retail: the inability to objectively verify
+    clothing fit before purchase, which remains the <strong>leading driver of return rates</strong> globally.
+    InstaWear bridges this gap by merging computer vision, 3D body modeling, and augmented reality
+    into a seamless kiosk-based solution.
+  </p>
+</section>
+
+<div class="divider"></div>
+
+
+<section id="demo" class="reveal">
+  <p class="section-tag">03 — Project Demo</p>
+  <h2 class="section-title">See It in Action</h2>
+  <div style="margin-top:2rem;display:flex;flex-direction:column;align-items:center;gap:1.5rem;">
+    <div style="
+      width:100%;
+      max-width:900px;
+      border-radius:1.5rem;
+      overflow:hidden;
+      border:1px solid rgba(0,229,255,0.2);
+      box-shadow:0 30px 80px rgba(0,0,0,0.6), 0 0 60px rgba(0,229,255,0.07);
+      background:#000;
+      position:relative;
+    ">
+      <video
+        controls
+        autoplay
+        muted
+        loop
+        playsinline
+        style="width:100%;display:block;max-height:560px;object-fit:contain;background:#000;"
+      >
+        <source src="assets/Com.video.mp4"/>
+        Your browser does not support the video tag.
+      </video>
+    </div>
+    <p style="font-family:'Space Mono',monospace;font-size:0.7rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--muted);text-align:center;">
+      InstaWear · Live Demo — Interactive Virtual Fitting Room
+    </p>
+  </div>
+</section>
+
+<div class="divider"></div>
+<!-- SCOPE + MARKET PROBLEM -->
+<section id="scope" class="reveal">
+  <div class="two-col">
+    <div>
+      <p class="section-tag">04 — Project Scope</p>
+      <h2 class="section-title">What We Cover</h2>
+      <p class="prose">InstaWear targets the <strong>in-store fitting room experience</strong>, helping retail brands modernize their customer journey. The scope encompasses:</p>
+      <ul class="prose">
+        <li><strong>3D body scanning</strong> via Kinect v2 depth sensing and IR skeleton tracking.</li>
+        <li><strong>Circumferential measurement</strong> of chest, waist, and hips using a marker-embedded digital gauge with real-time positional validation.</li>
+        <li><strong>SMPL-X avatar generation</strong> personalized to the user's exact body shape and facial features.</li>
+        <li><strong>Virtual garment try-on</strong> with real-time draping simulation and fit classification.</li>
+        <li><strong>Size recommendation engine</strong> suggesting optimal sizing based on captured measurements.</li>
+      </ul>
+      <p class="prose" style="margin-top:1rem;">The system is designed for deployment as a <strong>kiosk-based installation</strong> inside physical retail environments — no wearables or special gear required.</p>
+    </div>
+    <div>
+      <p class="section-tag">05 — Market Problem</p>
+      <h2 class="section-title">The Pain We Solve</h2>
+      <p class="prose">
+        The global fashion industry loses billions annually due to <strong>sizing mismatch</strong>.
+        Shoppers either avoid online purchases out of uncertainty, or return items post-delivery —
+        both outcomes hurting retailers and frustrating customers.
+        <br><br>
+        Even in physical stores, traditional fitting rooms are time-consuming and provide no objective
+        size guidance. Customers rely on subjective feel and inconsistent brand sizing charts,
+        leading to <strong>poor purchase confidence</strong> and high churn.
+        <br><br>
+        InstaWear replaces guesswork with <strong>data-driven precision</strong> — giving every shopper
+        a personalized, immersive fitting experience backed by computer vision and 3D body modeling.
+      </p>
+      <div class="stat-row">
+        <div class="stat-box">
+          <div class="stat-num">30%</div>
+          <div class="stat-label">Avg. online fashion return rate driven by sizing issues</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-num">$550B</div>
+          <div class="stat-label">Global annual losses from clothing returns</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-num">99.8%</div>
+          <div class="stat-label">Circumferential measurement accuracy achieved</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- INTRO -->
+<section id="intro" class="reveal">
+  <p class="section-tag">06 — Introduction</p>
+  <h2 class="section-title">How It Works</h2>
+  <div class="intro-grid">
+    <div class="prose">
+      <p>The InstaWear experience begins the moment a user steps in front of the
+      <strong>Kinect v2 camera</strong>. The sensor combines a 1080p RGB camera with a depth sensor
+      and IR skeleton tracker, capturing the user's full 3D body silhouette in real time.</p>
+      <p style="margin-top:1rem;">To enhance circumferential measurement precision — where depth scanning alone is insufficient —
+      the user interacts with a <strong>digital gauge device</strong> equipped with optical markers.
+      The system's computer vision pipeline reads the marker position relative to the body, confirming
+      whether the tape sits correctly at the chest, waist, and hip landmarks. On-screen prompts guide
+      the user until each measurement is validated.</p>
+      <p style="margin-top:1rem;">These measurements feed into the <strong>SMPL-X parametric body model</strong>, generating a fully
+      rigged, anatomically accurate avatar. Facial geometry from the RGB feed completes the likeness,
+      making the experience genuinely immersive.</p>
+      <p style="margin-top:1rem;">The avatar is then dressed with garments from the store's digital catalog. A physics-based
+      draping engine simulates how each piece falls on the user's specific body, and a
+      <strong>fit analysis module</strong> classifies every garment as <em>Tight</em>,
+      <em>Comfortable</em>, or <em>Loose</em>, suggesting the correct size variant when needed.</p>
+    </div>
+    <div class="feature-list">
+      <div class="feature-item">
+        <span class="feature-icon">📡</span>
+        <div class="feature-text">
+          <strong>Kinect v2 Body Scan</strong>
+          <p>Depth + IR skeleton tracking captures full 3D body geometry in seconds.</p>
+        </div>
+      </div>
+      <div class="feature-item">
+        <span class="feature-icon">📏</span>
+        <div class="feature-text">
+          <strong>Smart Digital Gauge</strong>
+          <p>Marker-based tape communicates with the system to validate chest, waist &amp; hip positions in real time.</p>
+        </div>
+      </div>
+      <div class="feature-item">
+        <span class="feature-icon">🧍</span>
+        <div class="feature-text">
+          <strong>SMPL-X Avatar Generation</strong>
+          <p>Parametric 3D model shaped to your exact measurements at 99.8% accuracy.</p>
+        </div>
+      </div>
+      <div class="feature-item">
+        <span class="feature-icon">👤</span>
+        <div class="feature-text">
+          <strong>Facial Feature Integration</strong>
+          <p>RGB feed maps your face onto the avatar for a fully personalized try-on.</p>
+        </div>
+      </div>
+      <div class="feature-item">
+        <span class="feature-icon">👗</span>
+        <div class="feature-text">
+          <strong>Virtual Try-On &amp; Fit Engine</strong>
+          <p>Drape garments on your avatar, get instant Tight / Comfortable / Loose feedback plus size suggestions.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- FLOWCHART -->
+<section id="flowchart" class="reveal">
+  <p class="section-tag">07 — System Flow</p>
+  <h2 class="section-title">End-to-End Process</h2>
+
+  <div class="flow-container">
+    <div class="flow-row">
+      <div class="flow-node accent">
+        <div class="node-icon">🚶</div>
+        <div class="node-title">User Enters</div>
+        <div class="node-desc">Stands in front of the InstaWear kiosk</div>
+      </div>
+      <div class="flow-arrow-h">→</div>
+      <div class="flow-node">
+        <div class="node-icon">📡</div>
+        <div class="node-title">Depth Scan</div>
+        <div class="node-desc">Kinect v2 captures full 3D body geometry + IR skeleton</div>
+      </div>
+      <div class="flow-arrow-h">→</div>
+      <div class="flow-node">
+        <div class="node-icon">📏</div>
+        <div class="node-title">Digital Gauge</div>
+        <div class="node-desc">User measures chest / waist / hip with marker-embedded gauge</div>
+      </div>
+    </div>
+
+    <div class="flow-arrow-v">↓</div>
+
+    <div class="flow-row" style="flex-direction:row-reverse;">
+      <div class="flow-node">
+        <div class="node-icon">🧍</div>
+        <div class="node-title">Avatar Build</div>
+        <div class="node-desc">SMPL-X model generated from all measurements at 99.8% accuracy</div>
+      </div>
+      <div class="flow-arrow-h" style="transform:scaleX(-1)">→</div>
+      <div class="flow-node">
+        <div class="node-icon">✅</div>
+        <div class="node-title">Validation</div>
+        <div class="node-desc">System confirms marker is within the correct anatomical range</div>
+      </div>
+      <div class="flow-arrow-h" style="transform:scaleX(-1)">→</div>
+      <div class="flow-node">
+        <div class="node-icon">📷</div>
+        <div class="node-title">Face Capture</div>
+        <div class="node-desc">RGB feed maps facial features onto the avatar for realism</div>
+      </div>
+    </div>
+
+    <div class="flow-arrow-v">↓</div>
+
+    <div class="flow-row">
+      <div class="flow-node">
+        <div class="node-icon">👗</div>
+        <div class="node-title">Browse Catalog</div>
+        <div class="node-desc">User selects garments from the digital store catalog</div>
+      </div>
+      <div class="flow-arrow-h">→</div>
+      <div class="flow-node">
+        <div class="node-icon">🪡</div>
+        <div class="node-title">Virtual Drape</div>
+        <div class="node-desc">Physics engine simulates garment on user's avatar</div>
+      </div>
+      <div class="flow-arrow-h">→</div>
+      <div class="flow-node highlight">
+        <div class="node-icon">🎯</div>
+        <div class="node-title">Fit Analysis</div>
+        <div class="node-desc">Tight / Comfortable / Loose rating + smart size recommendation</div>
+      </div>
+    </div>
+
+    <div class="flow-arrow-v">↓</div>
+
+    <div class="flow-row">
+      <div class="flow-node accent" style="max-width:240px;min-width:210px;">
+        <div class="node-icon">🛍️</div>
+        <div class="node-title">Confident Purchase</div>
+        <div class="node-desc">Customer buys the right size — first time, every time</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logos">
+  <img src="assets/Academy logo.png" alt="Academy logo" style="height:60px;" />
+    <div class="footer-sep"></div>
+    <img src="assets/instawear-logo.png" alt="InstaWear" style="height:50px;" />
+    </div>
+  <div class="footer-note">
+    Egyptian Academy for Engineering &amp; Advanced Technology (EAEAT)<br>
+    Graduation Project · Electrical Engineering · 2025/2026<br>
+  </div>
+</footer>
+
+<!-- QR CODE -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) { e.target.classList.add('visible'); observer.unobserve(e.target); }
+    });
+  }, { threshold: 0.1 });
+  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+</script>
+</body>
+</html>
